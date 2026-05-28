@@ -15,23 +15,19 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class TodoService {
 
     private final TodoRepository todoRepository;
-    private final WebClient webClient;
+    private final SendNotificationService sendNotificationService;
 
-    @Value("${notification.url}")
-    private String NOTIFICATION_URL;
-    public TodoService(
-            TodoRepository todoRepository,
-            WebClient webClient
-    ) {
+
+    public TodoService(TodoRepository todoRepository, SendNotificationService sendNotificationService) {
         this.todoRepository = todoRepository;
-        this.webClient = webClient;
+        this.sendNotificationService = sendNotificationService;
     }
 
     public Todo createTodo(Todo todo) {
 
         Todo saved = todoRepository.save(todo);
 
-        sendNotification(
+        sendNotificationService.sendNotification(
                 "TODO_CREATED",
                 saved.getId(),
                 "Nouvelle tâche créée"
@@ -61,7 +57,7 @@ public class TodoService {
 
         Todo updated = todoRepository.save(existing);
 
-        sendNotification(
+        sendNotificationService.sendNotification(
                 "TODO_UPDATED",
                 updated.getId(),
                 "Tâche mise à jour"
@@ -78,7 +74,7 @@ public class TodoService {
 
         todoRepository.deleteById(id);
 
-        sendNotification(
+        sendNotificationService.sendNotification(
                 "TODO_DELETED",
                 id,
                 "Tâche supprimée"
@@ -93,7 +89,7 @@ public class TodoService {
 
         Todo updated = todoRepository.save(todo);
 
-        sendNotification(
+        sendNotificationService.sendNotification(
                 "TODO_COMPLETED",
                 updated.getId(),
                 "Tâche terminée"
@@ -102,23 +98,5 @@ public class TodoService {
         return updated;
     }
 
-    private void sendNotification(String event, Long todoId, String message) {
-        try {
-            NotificationRequest request = new NotificationRequest(event, todoId, message);
 
-            webClient.post()
-                    .uri(NOTIFICATION_URL)
-                    .bodyValue(request)
-                    .retrieve()
-                    .toBodilessEntity()
-                    .block();
-
-        } catch (Exception e) {
-
-            System.err.println(
-                    "Notification service unavailable : "
-                            + e.getMessage()
-            );
-        }
-    }
 }
