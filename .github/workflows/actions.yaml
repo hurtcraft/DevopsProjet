@@ -2,8 +2,11 @@ name: actions.yaml
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   test-todo-service:
@@ -26,7 +29,6 @@ jobs:
 
       - name: Run tests
         run: mvn clean test
-
 
   test-notification-service:
     name: Test Notification Service
