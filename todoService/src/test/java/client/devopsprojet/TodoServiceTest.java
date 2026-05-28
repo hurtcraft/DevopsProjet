@@ -10,7 +10,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,25 +23,27 @@ import static org.mockito.Mockito.*;
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"
 })
 @ActiveProfiles("test")
+
 class TodoServiceTest {
 
     private TodoRepository todoRepository;
-    private TodoService todoService;
     private SendNotificationService sendNotificationService;
+    private TodoService todoService;
+
     @BeforeEach
     void setUp() {
-
         todoRepository = mock(TodoRepository.class);
+        sendNotificationService = mock(SendNotificationService.class);
 
-        WebClient webClient = WebClient.builder().build();
-        sendNotificationService= new SendNotificationService(webClient);
         todoService = new TodoService(todoRepository, sendNotificationService);
     }
 
+
     @Test
-    void shouldCreateTodo() {
+    void shouldCreateTodo_andSendNotification() {
 
         Todo todo = new Todo();
+        todo.setId(1L);
         todo.setTitle("Test Todo");
 
         when(todoRepository.save(any(Todo.class))).thenReturn(todo);
@@ -52,25 +53,32 @@ class TodoServiceTest {
         assertNotNull(saved);
         assertEquals("Test Todo", saved.getTitle());
 
-        verify(todoRepository, times(1)).save(todo);
+        verify(todoRepository).save(todo);
+        verify(sendNotificationService).sendNotification(
+                eq("TODO_CREATED"),
+                eq(1L),
+                eq("Nouvelle tâche créée")
+        );
     }
+
 
     @Test
     void shouldReturnAllTodos() {
 
-        Todo todo1 = new Todo();
-        todo1.setTitle("Todo 1");
+        Todo t1 = new Todo();
+        t1.setTitle("Todo 1");
 
-        Todo todo2 = new Todo();
-        todo2.setTitle("Todo 2");
+        Todo t2 = new Todo();
+        t2.setTitle("Todo 2");
 
-        when(todoRepository.findAll())
-                .thenReturn(List.of(todo1, todo2));
+        when(todoRepository.findAll()).thenReturn(List.of(t1, t2));
 
-        List<Todo> todos = todoService.getAllTodos();
+        List<Todo> result = todoService.getAllTodos();
 
-        assertEquals(2, todos.size());
+        assertEquals(2, result.size());
+        verify(todoRepository).findAll();
     }
+
 
     @Test
     void shouldReturnTodoById() {
@@ -79,8 +87,7 @@ class TodoServiceTest {
         todo.setId(1L);
         todo.setTitle("Test");
 
-        when(todoRepository.findById(1L))
-                .thenReturn(Optional.of(todo));
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
 
         Todo result = todoService.getTodoById(1L);
 
@@ -88,13 +95,92 @@ class TodoServiceTest {
     }
 
     @Test
-    void shouldDeleteTodo() {
+    void shouldThrowWhenTodoNotFound() {
+
+        when(todoRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class,
+                () -> todoService.getTodoById(1L));
+    }
+
+
+    @Test
+    void shouldUpdateTodo_andSendNotification() {
+
+        Todo existing = new Todo();
+        existing.setId(1L);
+        existing.setTitle("Old");
+        existing.setDescription("Old desc");
+        existing.setCompleted(false);
+
+        Todo update = new Todo();
+        update.setTitle("New");
+        update.setDescription("New desc");
+        update.setCompleted(true);
+
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(todoRepository.save(existing)).thenReturn(existing);
+
+        Todo result = todoService.updateTodo(1L, update);
+
+        assertEquals("New", result.getTitle());
+        assertTrue(result.isCompleted());
+
+        verify(todoRepository).save(existing);
+        verify(sendNotificationService).sendNotification(
+                "TODO_UPDATED",
+                1L,
+                "Tâche mise à jour"
+        );
+    }
+
+
+    @Test
+    void shouldDeleteTodo_andSendNotification() {
 
         when(todoRepository.existsById(1L)).thenReturn(true);
 
         todoService.deleteTodo(1L);
 
-        verify(todoRepository, times(1))
-                .deleteById(1L);
+        verify(todoRepository).deleteById(1L);
+        verify(sendNotificationService).sendNotification(
+                "TODO_DELETED",
+                1L,
+                "Tâche supprimée"
+        );
+    }
+
+    @Test
+    void shouldThrowWhenDeleteTodoNotFound() {
+
+        when(todoRepository.existsById(1L)).thenReturn(false);
+
+        assertThrows(RuntimeException.class,
+                () -> todoService.deleteTodo(1L));
+
+        verify(todoRepository, never()).deleteById(anyLong());
+    }
+
+
+    @Test
+    void shouldMarkAsCompleted_andSendNotification() {
+
+        Todo todo = new Todo();
+        todo.setId(1L);
+        todo.setCompleted(false);
+
+        when(todoRepository.findById(1L)).thenReturn(Optional.of(todo));
+        when(todoRepository.save(todo)).thenReturn(todo);
+
+        Todo result = todoService.markAsCompleted(1L);
+
+        assertTrue(result.isCompleted());
+
+        verify(todoRepository).save(todo);
+        verify(sendNotificationService).sendNotification(
+                "TODO_COMPLETED",
+                1L,
+                "Tâche terminée"
+        );
     }
 }

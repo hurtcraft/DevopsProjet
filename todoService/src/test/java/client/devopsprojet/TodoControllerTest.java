@@ -20,8 +20,10 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -38,6 +40,7 @@ class TodoControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+
     @Test
     void shouldGetAllTodos() throws Exception {
 
@@ -45,14 +48,16 @@ class TodoControllerTest {
         todo.setId(1L);
         todo.setTitle("Test Todo");
 
-        when(todoService.getAllTodos())
-                .thenReturn(List.of(todo));
+        when(todoService.getAllTodos()).thenReturn(List.of(todo));
 
         mockMvc.perform(get("/todos"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].title")
-                        .value("Test Todo"));
+                .andExpect(jsonPath("$[0].id").value(1L))
+                .andExpect(jsonPath("$[0].title").value("Test Todo"));
+
+        verify(todoService).getAllTodos();
     }
+
 
     @Test
     void shouldCreateTodo() throws Exception {
@@ -61,14 +66,67 @@ class TodoControllerTest {
         todo.setId(1L);
         todo.setTitle("New Todo");
 
-        when(todoService.createTodo(org.mockito.ArgumentMatchers.any(Todo.class)))
-                .thenReturn(todo);
+        when(todoService.createTodo(any(Todo.class))).thenReturn(todo);
 
         mockMvc.perform(post("/todos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(todo)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title")
-                        .value("New Todo"));
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.title").value("New Todo"));
+
+        verify(todoService).createTodo(any(Todo.class));
     }
+
+
+    @Test
+    void shouldGetTodoById() throws Exception {
+
+        Todo todo = new Todo();
+        todo.setId(1L);
+        todo.setTitle("Todo detail");
+
+        when(todoService.getTodoById(1L)).thenReturn(todo);
+
+        mockMvc.perform(get("/todos/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Todo detail"));
+
+        verify(todoService).getTodoById(1L);
+    }
+
+
+    @Test
+    void shouldUpdateTodo() throws Exception {
+
+        Todo todo = new Todo();
+        todo.setId(1L);
+        todo.setTitle("Updated");
+
+        when(todoService.updateTodo(eq(1L), any(Todo.class))).thenReturn(todo);
+
+        mockMvc.perform(put("/todos/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(todo)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Updated"));
+
+        verify(todoService).updateTodo(eq(1L), any(Todo.class));
+    }
+
+
+    @Test
+    void shouldDeleteTodo() throws Exception {
+
+        doNothing().when(todoService).deleteTodo(1L);
+
+        mockMvc.perform(delete("/todos/1"))
+                .andExpect(status().isNoContent());
+
+        verify(todoService).deleteTodo(1L);
+    }
+
+
+
+
 }
