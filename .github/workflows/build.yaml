@@ -50,3 +50,4 @@ jobs:
           -Dsonar.host.url=https://sonarcloud.io
           -Dsonar.projectKey=hurtcraft_todoService
           -Dsonar.organization=hurtcraft
+      ###
