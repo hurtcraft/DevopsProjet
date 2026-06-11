@@ -30,7 +30,13 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      - name: Build and analyze
+      - name: Analyze notificationService
+        working-directory: notificationService
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=hurtcraft_DevopsProjet
+        run: mvn -B verify sonar:sonar -Dsonar.projectKey=hurtcraft_notificationService
+      - name: Analyze todoService
+        working-directory: todoService
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: mvn -B verify sonar:sonar -Dsonar.projectKey=hurtcraft_todoService
