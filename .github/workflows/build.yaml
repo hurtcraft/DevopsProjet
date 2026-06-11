@@ -34,9 +34,16 @@ jobs:
         working-directory: notificationService
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify sonar:sonar -Dsonar.projectKey=hurtcraft_notificationService
+        run: >
+          mvn -B verify sonar:sonar
+          -Dsonar.projectKey=hurtcraft_notificationService
+          -Dsonar.organization=hurtcraft
+
       - name: Analyze todoService
         working-directory: todoService
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify sonar:sonar -Dsonar.projectKey=hurtcraft_todoService
+        run: >
+          mvn -B verify sonar:sonar
+          -Dsonar.projectKey=hurtcraft_todoService
+          -Dsonar.organization=hurtcraft
